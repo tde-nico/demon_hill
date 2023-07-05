@@ -1,8 +1,57 @@
 import importlib
-import socket, threading
+import socket, select, threading
 import os, sys, re
 import logging
 import random, string
+
+
+##############################   MAIN   ##############################
+
+if __name__ == '__main__':
+	module = __file__.split('/')[-1].removesuffix('.py')
+	this = importlib.import_module(module)
+
+	if len(sys.argv) == 3:
+		this.FROM_PORT = int(sys.argv[1])
+		this.TO_PORT = int(sys.argv[2])
+
+	proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT)
+	proxy.start()
+
+	reload_string = this.to_rainbow('Reloading Proxy')
+
+	while True:
+		try:
+			cmd = input()
+
+			if cmd[:1] == 'q':
+				proxy.close()
+				proxy.lock.acquire()
+				os._exit(0)
+
+			elif cmd[:1] == 'r':
+				this.logger.info(reload_string)
+				importlib.reload(this)
+				proxy.is_running = False
+				tmp_sock = proxy.sock
+				proxy.sample_connection()
+				proxy.lock.acquire()
+				proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT, tmp_sock)
+				proxy.start()
+			
+			elif cmd[:1] == 'i':
+				this.logger.info(this.to_rainbow(f'PID: {os.getpid()}'))
+				this.logger.info(f'Threads: {threading.enumerate()}')
+
+		except KeyboardInterrupt:
+			proxy.close()
+			proxy.lock.acquire()
+			os._exit(0)
+		except Exception as e:
+			this.logger.error(str(e))
+
+
+
 
 ##############################   CONFIG   ##############################
 
@@ -26,44 +75,6 @@ REGEX_MASKS = [
 REGEX_MASKS_2 = [
 	#rb'filename=".*"',
 ]
-
-
-##############################   MAIN   ##############################
-
-if __name__ == '__main__':
-	module = __file__.split('/')[-1][:-3]
-	this = importlib.import_module(module)
-
-	if len(sys.argv) == 3:
-		this.FROM_PORT = int(sys.argv[1])
-		this.TO_PORT = int(sys.argv[2])
-
-	proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT)
-	proxy.start()
-
-	reload_string = this.to_rainbow('Reloading Proxy')
-
-	while True:
-		try:
-			cmd = input()
-
-			if cmd[:1] == 'q':
-				os._exit(0)
-
-			if cmd[:1] == 'r':
-				this.logger.info(reload_string)
-				importlib.reload(this)
-				proxy.close()
-				proxy.lock.acquire()
-				proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT)
-				proxy.start()
-
-		except KeyboardInterrupt:
-			proxy.close()
-			proxy.lock.acquire()
-			os._exit(0)
-		except Exception as e:
-			this.logger.error(str(e))
 
 
 
@@ -233,6 +244,11 @@ class Proxy2Server(threading.Thread):
 			if not data:
 				if self.client:
 					self.c2p.close()
+				self.history = None
+				print(self.client)
+				print(self.server)
+				print(self.c2p.lock)
+				print(self.lock)
 				self.logger.info(f"server {CYAN}{self.c2p.id}{END} exit: closed")
 				sys.exit()
 
@@ -266,23 +282,17 @@ class Proxy2Server(threading.Thread):
 
 
 class Client2Proxy(threading.Thread):
-	def __init__(self, logger:logging.Logger, host:str, port:int, sock:socket.socket):
+	def __init__(self, logger:logging.Logger, host:str, port:int, client_sock:socket.socket, client_id:str):
 		super(Client2Proxy, self).__init__()
 		self.logger = logger
 		self.port = port
 		self.host = host
-		self.error = None
+		self.client = client_sock
+		self.id = client_id
 		self.server = None
 		self.p2s = None
 		self.history = b""
 		self.lock = threading.Lock()
-		try:
-			self.client, addr = sock.accept()
-			client_ip, client_port = addr
-			self.id = client_port
-			self.logger.info(f"client {CYAN}{self.id}{END} connected")
-		except OSError as e:
-			self.error = f'{e}'
 
 
 	def run(self):
@@ -299,6 +309,7 @@ class Client2Proxy(threading.Thread):
 			if not data:
 				if self.server:
 					self.p2s.close()
+				self.history = None
 				self.logger.info(f"client {CYAN}{self.id}{END} exit: closed")
 				sys.exit()
 
@@ -332,32 +343,65 @@ class Client2Proxy(threading.Thread):
 
 
 class TCPProxy(threading.Thread):
-	def __init__(self, logger:logging.Logger, from_host:str, to_host:str, from_port:int, to_port:int):
+	def __init__(self, logger:logging.Logger, from_host:str, to_host:str, from_port:int, to_port:int, sock:socket.socket=None):
 		super(TCPProxy, self).__init__()
 		self.logger = logger
 		self.from_host = from_host
 		self.to_host = to_host
 		self.from_port = from_port
 		self.to_port = to_port
+		self.sock = sock
+		self.is_running = True
 		self.lock = threading.Lock()
 
 
 	def run(self):
 		try:
-			self.lock.acquire()
-			self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-			self.sock.bind((self.from_host, self.from_port))
-			self.sock.listen(1)
-			self.logger.info(f"Serving {GREEN}{self.from_port}{END} -> {GREEN}{self.to_port}{END}")
+			if not self.sock:
+				self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+				self.sock.bind((self.from_host, self.from_port))
+				self.sock.listen(1)
+				self.logger.info(f"Serving {GREEN}{self.from_port}{END} -> {GREEN}{self.to_port}{END}")
+			else:
+				self.logger.info(f"{to_rainbow('Proxy Successfully Reloaded')}")
+
 		except Exception as e:
-			self.logger.critical('Error while opening Main Proxy Socket')
+			self.logger.critical('Error while opening Main Socket')
 			self.logger.critical(f'{e}')
 
+
 		while True:
-			c2p = Client2Proxy(self.logger, self.from_host, self.from_port, self.sock)
-			if c2p.error:
+
+			socket_list = [sys.stdin, self.sock]
+			read_sockets, write_sockets, error_sockets = select.select(socket_list, [], [])
+
+			if not self.is_running:
 				break
+
+			logger.debug(f'{read_sockets} {write_sockets} {error_sockets}')
+			if self.sock.fileno() == -1:
+				self.logger.info(f"Shutting {HIGH_RED}{self.from_port}{END} -> {HIGH_RED}{self.to_port}{END}")
+				break
+
+			if not read_sockets:
+				continue
+
+			for sock in read_sockets:
+				#print(sock)
+				if sock == self.sock:
+					try:
+						client_sock, addr = sock.accept()
+						client_ip, client_port = addr
+						client_id = f"{client_ip}:{client_port}"
+						self.logger.info(f"client {CYAN}{client_id}{END} connected")
+					except OSError as e:
+						logger.error(f'{e}')
+					break
+			else:
+				continue
+
+			c2p = Client2Proxy(self.logger, self.from_host, self.from_port, client_sock, client_id)
 
 			p2s = Proxy2Server(self.logger, self.to_host, self.to_port)
 			if p2s.error:
@@ -371,8 +415,8 @@ class TCPProxy(threading.Thread):
 
 			c2p.start()
 			p2s.start()
-
-		self.logger.info(f"Shutting {HIGH_RED}{self.from_port}{END} -> {HIGH_RED}{self.to_port}{END}")
+		
+		self.logger.info(f"{to_rainbow('Proxy Closed')}")
 		self.lock.release()
 
 
@@ -383,6 +427,7 @@ class TCPProxy(threading.Thread):
 
 	def sample_connection(self):
 		try:
+			self.lock.acquire()
 			server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			server.connect(('127.0.0.1', self.from_port))
 			server.close()
@@ -390,3 +435,4 @@ class TCPProxy(threading.Thread):
 			self.logger.warning(f'{e}')
 		except Exception as e:
 			self.logger.critical(f'{e}')
+
