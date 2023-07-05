@@ -69,7 +69,7 @@ FLAG_LEN = 32
 FLAG_REGEX = rb'[A-Z0-9]{31}='
 
 REGEX_MASKS = [
-	rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
+	#rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
 ]
 
 REGEX_MASKS_2 = [
@@ -131,7 +131,7 @@ def regex_filter_2(logger:logging.Logger, data:bytes, server_history:bytes, clie
 	return data
 
 SERVER_FILTERS = [
-	regex_filter,
+	#regex_filter,
 ]
 
 CLIENT_FILTERS = [
@@ -245,10 +245,6 @@ class Proxy2Server(threading.Thread):
 				if self.client:
 					self.c2p.close()
 				self.history = None
-				print(self.client)
-				print(self.server)
-				print(self.c2p.lock)
-				print(self.lock)
 				self.logger.info(f"server {CYAN}{self.c2p.id}{END} exit: closed")
 				sys.exit()
 
@@ -388,7 +384,6 @@ class TCPProxy(threading.Thread):
 				continue
 
 			for sock in read_sockets:
-				#print(sock)
 				if sock == self.sock:
 					try:
 						client_sock, addr = sock.accept()
