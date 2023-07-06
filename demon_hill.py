@@ -15,7 +15,7 @@ if __name__ == '__main__':
 		this.FROM_PORT = int(sys.argv[1])
 		this.TO_PORT = int(sys.argv[2])
 
-	proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT)
+	proxy = this.TCPProxy(this.logger, this.FROM_ADDR, this.TO_ADDR, this.FROM_PORT, this.TO_PORT)
 	proxy.start()
 
 	proxy.lock.acquire()
@@ -42,16 +42,19 @@ if __name__ == '__main__':
 				proxy.sample_connection()
 				proxy.lock.acquire()
 				proxy.lock.release()
-				proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT, tmp_sock)
+				proxy = this.TCPProxy(this.logger, this.FROM_ADDR, this.TO_ADDR, this.FROM_PORT, this.TO_PORT, tmp_sock)
 				proxy.start()
 			
 			elif cmd[:1] == 'i':
-				this.logger.info(this.to_rainbow(f'PID: {os.getpid()}'))
-				this.logger.info(f'Threads: {threading.enumerate()}')
+				this.logger.info(f'{this.HIGH_CYAN}PID{this.END}: {this.GREEN}{os.getpid()}{this.END}')
+				this.logger.info(f'{this.HIGH_CYAN}Threads{this.END}: {this.GREEN}{len(threading.enumerate())}{this.END}')
 
 		except KeyboardInterrupt:
 			proxy.close()
-			proxy.lock.acquire()
+			try:
+				proxy.lock.acquire()
+			except:
+				pass
 			os._exit(0)
 		except Exception as e:
 			this.logger.error(str(e))
@@ -63,6 +66,10 @@ if __name__ == '__main__':
 
 
 LOG_LEVEL = 'info'
+
+FROM_ADDR = '0.0.0.0'
+LOCALHOST = '127.0.0.1'
+TO_ADDR = '192.168.1.230'
 
 FROM_PORT = 1338
 TO_PORT = 1337
@@ -315,8 +322,11 @@ class TCPProxy(threading.Thread):
 				self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 				self.sock.bind((self.from_host, self.from_port))
 				self.sock.listen(1)
-				self.logger.info(f"Serving {GREEN}{self.from_port}{END} -> {GREEN}{self.to_port}{END}")
+				self.logger.info(f"Serving {BLUE}{self.from_host}{END}:{GREEN}{self.from_port}{END}" +\
+								f" -> {BLUE}{self.to_host}{END}:{GREEN}{self.to_port}{END}")
 			else:
+				self.logger.info(f"{BLUE}{self.from_host}{END}:{GREEN}{self.from_port}{END}" +\
+								f" -> {BLUE}{self.to_host}{END}:{GREEN}{self.to_port}{END}")
 				self.logger.info(f"{to_rainbow('Proxy Successfully Reloaded')}")
 			self.lock.release()
 
