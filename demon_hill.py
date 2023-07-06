@@ -18,6 +18,11 @@ if __name__ == '__main__':
 	proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT)
 	proxy.start()
 
+	proxy.lock.acquire()
+	if not proxy.sock:
+		os._exit(0)
+	proxy.lock.release()
+
 	reload_string = this.to_rainbow('Reloading Proxy')
 
 	while True:
@@ -32,10 +37,11 @@ if __name__ == '__main__':
 			elif cmd[:1] == 'r':
 				this.logger.info(reload_string)
 				importlib.reload(this)
-				proxy.is_running = False
 				tmp_sock = proxy.sock
+				proxy.is_running = False
 				proxy.sample_connection()
 				proxy.lock.acquire()
+				proxy.lock.release()
 				proxy = this.TCPProxy(this.logger, '0.0.0.0', '127.0.0.1', this.FROM_PORT, this.TO_PORT, tmp_sock)
 				proxy.start()
 			
@@ -69,7 +75,7 @@ FLAG_LEN = 32
 FLAG_REGEX = rb'[A-Z0-9]{31}='
 
 REGEX_MASKS = [
-	#rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
+	rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
 ]
 
 REGEX_MASKS_2 = [
@@ -130,8 +136,9 @@ def regex_filter_2(logger:logging.Logger, data:bytes, server_history:bytes, clie
 				break
 	return data
 
+
 SERVER_FILTERS = [
-	#regex_filter,
+	regex_filter,
 ]
 
 CLIENT_FILTERS = [
@@ -204,135 +211,84 @@ logger.addHandler(custom_handler)
 logger.setLevel(log_level)
 
 
-##############################   SERVER   ##############################
+##############################   MIDDLEWARE   ##############################
 
 
-class Proxy2Server(threading.Thread):
-	def __init__(self, logger:logging.Logger, host:str, port:int):
-		super(Proxy2Server, self).__init__()
+class Client2Server(threading.Thread):
+	def __init__(self, logger:logging.Logger, to_host:str, to_port:int, client_sock:socket.socket, client_id:str):
+		super(Client2Server, self).__init__()
 		self.logger = logger
-		self.port = port
-		self.host = host
-		self.error = None
-		self.client = None
-		self.c2p = None
-		self.history = b""
-		self.lock = threading.Lock()
-		try:
-			self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			self.server.connect((host, port))
-		except ConnectionRefusedError as e:
-			self.error = f'{e}'
-			self.logger.warning(f'{e}')
-		except Exception as e:
-			self.error = f'{e}'
-			self.logger.critical(f'{e}')
-
-
-	def run(self):
-		while True:
-			try:
-				data = b''
-				if self.server:
-					data = self.server.recv(4096)
-
-			except OSError:
-				self.close()
-				self.logger.info(f"server {CYAN}{self.c2p.id}{END} exit: recive")
-				sys.exit()
-
-			if not data:
-				if self.client:
-					self.c2p.close()
-				self.history = None
-				self.logger.info(f"server {CYAN}{self.c2p.id}{END} exit: closed")
-				sys.exit()
-
-			try:
-				if len(self.history) + len(data) < SERVER_HISTORY_SIZE:
-					self.history += data
-				self.logger.debug(data)
-				for f in SERVER_FILTERS:
-					data = f(self.logger, data, self.history, self.c2p.history, self.c2p.id)
-				self.c2p.lock.acquire()
-				if self.client and self.server:
-					self.client.sendall(data)
-				self.c2p.lock.release()
-
-			except Exception as e:
-				self.logger.error(f'server[{self.port} {self.c2p.id}]: {e}')
-
-
-	def close(self):
-		self.logger.info(f"server {CYAN}{self.c2p.id}{END} closed")
-		self.lock.acquire()
-		try:
-			self.server.close()
-		except AttributeError:
-			pass
-		self.server = None
-		self.lock.release()
-
-
-##############################   CLIENT   ##############################
-
-
-class Client2Proxy(threading.Thread):
-	def __init__(self, logger:logging.Logger, host:str, port:int, client_sock:socket.socket, client_id:str):
-		super(Client2Proxy, self).__init__()
-		self.logger = logger
-		self.port = port
-		self.host = host
 		self.client = client_sock
 		self.id = client_id
-		self.server = None
-		self.p2s = None
-		self.history = b""
-		self.lock = threading.Lock()
+		self.client_history = b""
+		self.server_history = b""
+		self.error = None
+		try:
+			self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			self.server.connect((to_host, to_port))
+		except ConnectionRefusedError as e:
+			self.error = f'{e}'
+			self.logger.warning(self.error)
+		except Exception as e:
+			self.error = f'{e}'
+			self.logger.critical(self.error)
+
+
+	def exit(self, msg):
+		msg = f'{CYAN}{self.id}{END} ' + msg
+		if self.client.fileno() != -1:
+			self.client.close()
+			msg = f'client ' + msg
+			if self.server.fileno() != -1:
+				msg = 'and ' + msg
+		if self.server.fileno() != -1:
+			self.server.close()
+			msg = f'server ' + msg
+		self.logger.info(f"{msg}")
+		sys.exit()
+
+
+	def send(self, read:socket.socket, write:socket.socket, is_client:bool):
+		try:
+			data = read.recv(4096)
+		except Exception as e:
+			self.exit(f'{e}')
+
+		if not data:
+			self.exit("closed")
+
+		# TODO better history
+		if is_client:
+			self.client_history += data
+			filters = CLIENT_FILTERS
+		else:
+			self.server_history += data
+			filters = SERVER_FILTERS
+
+		try:
+			for f in filters:
+				data = f(self.logger, data, self.server_history, self.client_history, self.id)
+			write.sendall(data)
+
+		except Exception as e:
+			self.exit(f"{e}")
 
 
 	def run(self):
+		socket_list = [self.client, self.server]
 		while True:
-			try:
-				data = b''
-				if self.client:
-					data = self.client.recv(4096)
-			except OSError:
-				self.close()
-				self.logger.info(f"client {CYAN}{self.id}{END} exit: recive")
-				sys.exit()
+			read_sockets, write_sockets, error_sockets = select.select(socket_list, [], [])
+			logger.debug(f'{read_sockets} {write_sockets} {error_sockets}')
 
-			if not data:
-				if self.server:
-					self.p2s.close()
-				self.history = None
-				self.logger.info(f"client {CYAN}{self.id}{END} exit: closed")
-				sys.exit()
+			if self.client.fileno() == -1 or self.server.fileno() == -1:
+				self.exit(f'closed during select')
 
-			try:
-				if len(self.history) + len(data) < CLIENT_HISTORY_SIZE:
-					self.history += data
-				self.logger.debug(data)
-				for f in CLIENT_FILTERS:
-					data = f(self.logger, data, self.p2s.history, self.history, self.id)
-				self.p2s.lock.acquire()
-				if self.server and self.client:
-					self.server.sendall(data)
-				self.p2s.lock.release()
+			for sock in read_sockets:
+				if sock == self.client:
+					self.send(self.client, self.server, True)
+				elif sock == self.server:
+					self.send(self.server, self.client, False)
 
-			except Exception as e:
-				self.logger.error(f'client[{self.port} {self.id}]: {e}')
-
-
-	def close(self):
-		self.logger.info(f"client {CYAN}{self.id}{END} closed")
-		self.lock.acquire()
-		try:
-			self.client.close()
-		except AttributeError:
-			pass
-		self.client = None
-		self.lock.release()
 
 
 ##############################   PROXY   ##############################
@@ -349,6 +305,7 @@ class TCPProxy(threading.Thread):
 		self.sock = sock
 		self.is_running = True
 		self.lock = threading.Lock()
+		self.lock.acquire()
 
 
 	def run(self):
@@ -361,21 +318,26 @@ class TCPProxy(threading.Thread):
 				self.logger.info(f"Serving {GREEN}{self.from_port}{END} -> {GREEN}{self.to_port}{END}")
 			else:
 				self.logger.info(f"{to_rainbow('Proxy Successfully Reloaded')}")
+			self.lock.release()
 
 		except Exception as e:
 			self.logger.critical('Error while opening Main Socket')
 			self.logger.critical(f'{e}')
+			self.sock.close()
+			self.sock = None
+			self.lock.release()
+			return
 
 
 		while True:
 
-			socket_list = [sys.stdin, self.sock]
+			socket_list = [self.sock]
 			read_sockets, write_sockets, error_sockets = select.select(socket_list, [], [])
+			logger.debug(f'{read_sockets} {write_sockets} {error_sockets}')
 
 			if not self.is_running:
 				break
 
-			logger.debug(f'{read_sockets} {write_sockets} {error_sockets}')
 			if self.sock.fileno() == -1:
 				self.logger.info(f"Shutting {HIGH_RED}{self.from_port}{END} -> {HIGH_RED}{self.to_port}{END}")
 				break
@@ -396,28 +358,24 @@ class TCPProxy(threading.Thread):
 			else:
 				continue
 
-			c2p = Client2Proxy(self.logger, self.from_host, self.from_port, client_sock, client_id)
-
-			p2s = Proxy2Server(self.logger, self.to_host, self.to_port)
-			if p2s.error:
-				c2p.close()
-				continue
-
-			c2p.server = p2s.server
-			p2s.client = c2p.client
-			p2s.c2p = c2p
-			c2p.p2s = p2s
-
-			c2p.start()
-			p2s.start()
+			middleware = Client2Server(
+				self.logger,
+				self.to_host,
+				self.to_port,
+				client_sock,
+				client_id
+			)
+			if not middleware.error:
+				middleware.start()
 		
 		self.logger.info(f"{to_rainbow('Proxy Closed')}")
 		self.lock.release()
 
 
 	def close(self):
-		self.sock.close()
-		self.sample_connection()
+		if self.sock:
+			self.sock.close()
+			self.sample_connection()
 
 
 	def sample_connection(self):
