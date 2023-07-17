@@ -5,7 +5,7 @@ from .log import *
 
 class Client2Server(threading.Thread):
 	def __init__(self, logger:logging.Logger, to_host:str, to_port:int, client_sock:socket.socket, client_id:str):
-		super(Client2Server, self).__init__()
+		super().__init__()
 		self.logger = logger
 		self.client = client_sock
 		self.id = client_id

@@ -18,6 +18,7 @@ MODULES = [
 	'settings',
 	'utils',
 	'submitter',
+	'http',
 	'filters',
 	#'client2server',
 	'tcp_proxy',

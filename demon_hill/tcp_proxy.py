@@ -2,7 +2,6 @@ from .settings import *
 from .log import *
 from .client2server import *
 
-
 from importlib import import_module, reload
 
 PACKAGE = 'demon_hill'
@@ -21,7 +20,7 @@ load_module('.client2server')
 
 class TCPProxy(threading.Thread):
 	def __init__(self, logger:logging.Logger, from_host:str, to_host:str, from_port:int, to_port:int, sock:socket.socket=None):
-		super(TCPProxy, self).__init__()
+		super().__init__()
 		self.logger = logger
 		self.from_host = from_host
 		self.to_host = to_host

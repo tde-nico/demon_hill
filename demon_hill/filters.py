@@ -1,7 +1,8 @@
 from .settings import *
 from .utils import *
-from .submitter import *
 from .log import *
+from .http import *
+
 
 
 def custom_filter(logger:logging.Logger, data:bytes, server_history:bytes, client_history:bytes, id:int) -> bytes:
@@ -31,9 +32,11 @@ def regex_filter_2(logger:logging.Logger, data:bytes, server_history:bytes, clie
 	return data
 
 
+
+
 SERVER_FILTERS = [
-	regex_filter,
-	#mirror_filter,
+	#regex_filter,
+	http_response,
 ]
 
 CLIENT_FILTERS = [
