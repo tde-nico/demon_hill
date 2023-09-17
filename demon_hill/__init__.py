@@ -17,10 +17,10 @@ MODULES = [
 	'log',
 	'settings',
 	'utils',
+	'tables',
 	'submitter',
 	'http',
 	'filters',
-	#'client2server',
 	'tcp_proxy',
 ]
 

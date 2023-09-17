@@ -4,13 +4,14 @@ from importlib import import_module, reload
 from threading import enumerate
 
 
-
 if __name__ == '__main__':
 	dh = import_module('demon_hill')
 
 	if len(argv) == 3:
 		dh.FROM_PORT = int(argv[1])
 		dh.TO_PORT = int(argv[2])
+
+	reload_string = dh.to_rainbow('Reloading Proxy')
 
 	proxy = dh.TCPProxy(dh.logger, dh.FROM_ADDR, dh.TO_ADDR, dh.FROM_PORT, dh.TO_PORT)
 	proxy.start()
@@ -20,19 +21,17 @@ if __name__ == '__main__':
 		_exit(0)
 	proxy.lock.release()
 
-	reload_string = dh.to_rainbow('Reloading Proxy')
+	if dh.AUTO_SET_TABLES:
+		dh.enable_forwarding(dh.logger)
 
 	while True:
 		try:
 			cmd = input()
 
-			if cmd[:1] == 'q':
-				proxy.lock.acquire()
-				proxy.close()
-				proxy.lock.acquire()
-				_exit(0)
+			if cmd[:1] == 'q': # Quit
+				proxy.exit()
 
-			elif cmd[:1] == 'r':
+			elif cmd[:1] == 'r': # Reload
 				dh.logger.info(reload_string)
 				reload(dh)
 				tmp_sock = proxy.sock
@@ -44,15 +43,23 @@ if __name__ == '__main__':
 				proxy = dh.TCPProxy(dh.logger, dh.FROM_ADDR, dh.TO_ADDR, dh.FROM_PORT, dh.TO_PORT, tmp_sock)
 				proxy.start()
 			
-			elif cmd[:1] == 'i':
+			elif cmd[:1] == 'i': # Info
 				dh.logger.info(f'{dh.HIGH_CYAN}PID{dh.END}: {dh.GREEN}{getpid()}{dh.END}')
 				dh.logger.info(f'{dh.HIGH_CYAN}Threads{dh.END}: {dh.GREEN}{len(enumerate())}{dh.END}')
 
+			elif cmd[:1] == 'f': # Forwarding
+				dh.enable_forwarding(dh.logger)
+			elif cmd[:1] == 'd': # Disable Forwarding
+				dh.disable_forwarding(dh.logger)
+			
+			elif cmd[:1] == '+': # increases logs
+				dh.loglevel_up()
+			elif cmd[:1] == '-': # decreases logs
+				dh.loglevel_down()
+
+
 		except KeyboardInterrupt:
-			proxy.lock.acquire()
-			proxy.close()
-			proxy.lock.acquire()
-			_exit(0)
+			proxy.exit()
 		except Exception as e:
 			dh.logger.error(str(e))
 

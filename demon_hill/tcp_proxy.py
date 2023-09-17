@@ -1,7 +1,9 @@
 from .settings import *
 from .log import *
 from .client2server import *
+from .tables import *
 
+from os import _exit
 from importlib import import_module, reload
 
 PACKAGE = 'demon_hill'
@@ -99,12 +101,6 @@ class TCPProxy(threading.Thread):
 		self.lock.release()
 
 
-	def close(self):
-		if self.sock:
-			self.sock.close()
-			self.sample_connection()
-
-
 	def sample_connection(self):
 		try:
 			server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -114,6 +110,21 @@ class TCPProxy(threading.Thread):
 			self.logger.warning(f'{e}')
 		except Exception as e:
 			self.logger.critical(f'{e}')
+
+
+	def close(self):
+		if self.sock:
+			self.sock.close()
+			self.sample_connection()
+	
+
+	def exit(self):
+		if AUTO_SET_TABLES:
+			disable_forwarding(self.logger)
+		self.lock.acquire()
+		self.close()
+		self.lock.acquire()
+		_exit(0)
 
 
 # Log

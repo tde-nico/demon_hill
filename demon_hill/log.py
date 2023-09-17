@@ -29,6 +29,8 @@ def to_rainbow(s: str) -> str:
 	return res
 
 
+
+
 levels = {
 	'debug': logging.DEBUG,
 	'info': logging.INFO,
@@ -46,6 +48,34 @@ custom_handler.setLevel(log_level)
 custom_handler.setFormatter(CustomFormatter())
 logger.addHandler(custom_handler)
 logger.setLevel(log_level)
+
+
+
+def change_loglevel(direction):
+	global levels, log_level, logger
+	levels_values = list(levels.values())
+	levels_labels = list(levels.keys())
+	current_level_index = levels_values.index(log_level)
+	current_level = levels_labels[current_level_index]
+	if direction > 0:
+		if current_level_index < len(levels_values) - 1:
+			current_level_index += direction
+	else:
+		if current_level_index > 0:
+			current_level_index += direction
+	new_level = levels_values[current_level_index]
+	new_level_label = levels_labels[current_level_index]
+	logger.critical(f"{HIGH_CYAN}{current_level}{END} -> {GREEN}{new_level_label}{END}")
+	log_level = new_level
+	logger.setLevel(log_level)
+
+
+def loglevel_up():
+	change_loglevel(-1)
+
+
+def loglevel_down():
+	change_loglevel(+1)
 
 
 # Log

@@ -8,6 +8,7 @@ from .http import *
 def custom_filter(logger:logging.Logger, data:bytes, server_history:bytes, client_history:bytes, id:int) -> bytes:
 
 	# write here
+	logger.debug(data)
 
 	return data
 
@@ -35,11 +36,13 @@ def regex_filter_2(logger:logging.Logger, data:bytes, server_history:bytes, clie
 
 
 SERVER_FILTERS = [
-	#regex_filter,
-	http_response,
+	regex_filter,
+	#http_response,
+	#custom_filter,
 ]
 
 CLIENT_FILTERS = [
+	#custom_filter,
 ]
 
 
