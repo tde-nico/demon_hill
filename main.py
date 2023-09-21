@@ -33,6 +33,7 @@ if __name__ == '__main__':
 
 			elif cmd[:1] == 'r': # Reload
 				dh.logger.info(reload_string)
+				dh.RELOAD = True
 				reload(dh)
 				tmp_sock = proxy.sock
 				proxy.lock.acquire()
@@ -51,12 +52,6 @@ if __name__ == '__main__':
 				dh.enable_forwarding(dh.logger)
 			elif cmd[:1] == 'd': # Disable Forwarding
 				dh.disable_forwarding(dh.logger)
-			
-			elif cmd[:1] == '+': # increases logs
-				dh.loglevel_up()
-			elif cmd[:1] == '-': # decreases logs
-				dh.loglevel_down()
-
 
 		except KeyboardInterrupt:
 			proxy.exit()

@@ -4,13 +4,12 @@ from os import system, getuid
 
 
 IP_INTERFACE = "eth0"
-OUT_BLOCK = " 1>/dev/null"
 ERROR_BLOCK = " 2>/dev/null"
 IP_PREROUTING = "iptables {} " + f"PREROUTING -t nat -i {IP_INTERFACE} -p tcp --dport {TO_PORT} -j DNAT --to-destination :{FROM_PORT}"
 IP_FORWARD = "iptables {} " + f"FORWARD -i {IP_INTERFACE} -p tcp --dport {FROM_PORT} -j ACCEPT"
 
-IP_PREROUTING += ERROR_BLOCK + OUT_BLOCK
-IP_FORWARD += ERROR_BLOCK + OUT_BLOCK
+IP_PREROUTING += ERROR_BLOCK
+IP_FORWARD += ERROR_BLOCK
 
 
 def is_routing():

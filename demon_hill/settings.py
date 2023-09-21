@@ -10,8 +10,8 @@ FROM_ADDR = '0.0.0.0'
 LOCALHOST = '127.0.0.1'
 TO_ADDR = LOCALHOST
 
-FROM_PORT = 1338
-TO_PORT = 1337
+FROM_PORT = 8001
+TO_PORT = 8002
 
 SERVER_HISTORY_SIZE = 1024 * 1024
 CLIENT_HISTORY_SIZE = 1024 * 1024
@@ -23,7 +23,7 @@ FLAG_LEN = 32
 FLAG_REGEX = rb'[A-Z0-9]{31}='
 
 REGEX_MASKS = [
-	rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
+	#rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
 ]
 
 REGEX_MASKS_2 = [
@@ -52,3 +52,4 @@ HIGH_YELLOW		= "\033[93m"
 HIGH_BLUE		= "\033[94m"
 HIGH_PURPLE		= "\033[95m"
 HIGH_CYAN		= "\033[96m"
+

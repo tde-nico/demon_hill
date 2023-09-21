@@ -36,13 +36,13 @@ def regex_filter_2(logger:logging.Logger, data:bytes, server_history:bytes, clie
 
 
 SERVER_FILTERS = [
-	regex_filter,
+	#regex_filter,
 	#http_response,
-	#custom_filter,
+	custom_filter,
 ]
 
 CLIENT_FILTERS = [
-	#custom_filter,
+	custom_filter,
 ]
 
 

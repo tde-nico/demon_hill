@@ -48,10 +48,12 @@ class Client2Server(threading.Thread):
 
 		# TODO better history
 		if is_client:
-			self.client_history += data
+			if len(self.client_history + data) <= CLIENT_HISTORY_SIZE:
+				self.client_history += data
 			filters = CLIENT_FILTERS
 		else:
-			self.server_history += data
+			if len(self.server_history + data) <= SERVER_HISTORY_SIZE:
+				self.server_history += data
 			filters = SERVER_FILTERS
 
 		try:
