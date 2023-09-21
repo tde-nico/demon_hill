@@ -39,6 +39,14 @@ class TCPProxy(threading.Thread):
 			if not self.sock:
 				self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+				if SSL:
+					self.sock = ssl.wrap_socket(
+						self.sock,
+						server_side=True,
+						keyfile=SSL_KEYFILE,
+						certfile=SSL_CERTFILE,
+						do_handshake_on_connect=True,
+					)
 				self.sock.bind((self.from_host, self.from_port))
 				self.sock.listen(1)
 				self.logger.info(f"Serving {BLUE}{self.from_host}{END}:{GREEN}{self.from_port}{END}" +\
@@ -81,6 +89,10 @@ class TCPProxy(threading.Thread):
 						client_ip, client_port = addr
 						client_id = f"{client_ip}:{client_port}"
 						self.logger.info(f"client {CYAN}{client_id}{END} connected")
+					except ssl.SSLError as e:
+						if e.errno == ssl.SSL_ERROR_EOF:
+							pass
+						continue
 					except OSError as e:
 						self.logger.error(f'{e}')
 					break

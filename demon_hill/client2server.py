@@ -14,7 +14,16 @@ class Client2Server(threading.Thread):
 		self.error = None
 		try:
 			self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			if SSL:
+				self.server = ssl.wrap_socket(
+					self.server,
+					ca_certs=SSL_CA_CERT,
+					do_handshake_on_connect=True,
+				)
 			self.server.connect((to_host, to_port))
+
+			self.client.setblocking(False)
+			self.server.setblocking(False)
 		except ConnectionRefusedError as e:
 			self.error = f'{e}'
 			self.logger.warning(self.error)
@@ -39,7 +48,15 @@ class Client2Server(threading.Thread):
 
 	def send(self, read:socket.socket, write:socket.socket, is_client:bool):
 		try:
-			data = read.recv(4096)
+			if SSL:
+				data = read.recv()
+			else:
+				data = read.recv(1024)
+
+		except ssl.SSLError as e:
+			if e.errno == ssl.SSL_ERROR_WANT_READ:
+				pass
+			return
 		except Exception as e:
 			self.exit(f'{e}')
 

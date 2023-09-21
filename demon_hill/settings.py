@@ -3,6 +3,7 @@ import os, sys, re
 import logging
 import random, string
 import requests, datetime
+import ssl
 
 LOG_LEVEL = 'debug'
 
@@ -10,8 +11,13 @@ FROM_ADDR = '0.0.0.0'
 LOCALHOST = '127.0.0.1'
 TO_ADDR = LOCALHOST
 
-FROM_PORT = 8001
-TO_PORT = 8000
+FROM_PORT = 1336
+TO_PORT = 1337
+
+SSL = 1
+SSL_KEYFILE = "./server-key.pem"
+SSL_CERTFILE = "./server-cert.pem"
+SSL_CA_CERT = "./ca-cert.pem"
 
 SERVER_HISTORY_SIZE = 1024 * 1024
 CLIENT_HISTORY_SIZE = 1024 * 1024
