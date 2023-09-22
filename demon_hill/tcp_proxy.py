@@ -37,7 +37,10 @@ class TCPProxy(threading.Thread):
 	def run(self):
 		try:
 			if not self.sock:
-				self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				if IPV6:
+					self.sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+				else:
+					self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 				if SSL:
 					self.sock = ssl.wrap_socket(
@@ -86,7 +89,7 @@ class TCPProxy(threading.Thread):
 				if sock == self.sock:
 					try:
 						client_sock, addr = sock.accept()
-						client_ip, client_port = addr
+						client_ip, client_port = addr[0], addr[1]
 						client_id = f"{client_ip}:{client_port}"
 						self.logger.info(f"client {CYAN}{client_id}{END} connected")
 					except ssl.SSLError as e:
@@ -115,7 +118,10 @@ class TCPProxy(threading.Thread):
 
 	def sample_connection(self):
 		try:
-			server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			if IPV6:
+				server = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+			else:
+				server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			server.connect((LOCALHOST, self.from_port))
 			server.close()
 		except ConnectionRefusedError as e:

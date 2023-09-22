@@ -1,0 +1,12 @@
+code cleaning
+
+argumet parser:
+	ports
+	addresses
+	iptables changes
+
+
+pcap sniff:
+	sock
+	ssl sock
+

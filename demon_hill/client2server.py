@@ -13,7 +13,10 @@ class Client2Server(threading.Thread):
 		self.server_history = b""
 		self.error = None
 		try:
-			self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			if IPV6:
+				self.server = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+			else:
+				self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 			if SSL:
 				self.server = ssl.wrap_socket(
 					self.server,

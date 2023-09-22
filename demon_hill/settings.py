@@ -7,33 +7,50 @@ import ssl
 
 LOG_LEVEL = 'debug'
 
-FROM_ADDR = '0.0.0.0'
-LOCALHOST = '127.0.0.1'
+# IPv6
+IPV6 = True
+if IPV6:
+	INADDR_ANY = '::'
+	LOCALHOST = '::1'
+else:
+	INADDR_ANY = '0.0.0.0'
+	LOCALHOST = '127.0.0.1'
+
+
+# Addrs
+FROM_ADDR = INADDR_ANY
 TO_ADDR = LOCALHOST
 
+# Ports
 FROM_PORT = 1336
 TO_PORT = 1337
 
-SSL = 1
+# SSL
+SSL = False
 SSL_KEYFILE = "./server-key.pem"
 SSL_CERTFILE = "./server-cert.pem"
 SSL_CA_CERT = "./ca-cert.pem"
 
-SERVER_HISTORY_SIZE = 1024 * 1024
-CLIENT_HISTORY_SIZE = 1024 * 1024
-
+# Auto forwarding
 AUTO_SET_TABLES = True
 
 
+# Max history
+SERVER_HISTORY_SIZE = 1024 * 1024
+CLIENT_HISTORY_SIZE = 1024 * 1024
+
+
+# Flag
 FLAG_LEN = 32
 FLAG_REGEX = rb'[A-Z0-9]{31}='
 
+
+# Masks
 REGEX_MASKS = [
 	rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
 ]
 
 REGEX_MASKS_2 = [
-	#rb'filename=".*"',
 ]
 
 

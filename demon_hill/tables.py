@@ -6,8 +6,12 @@ from os import system, getuid
 IP_INTERFACE = "eth0"
 OUT_BLOCK = " 1>/dev/null"
 ERROR_BLOCK = " 2>/dev/null"
-IP_PREROUTING = "iptables {} " + f"PREROUTING -t nat -i {IP_INTERFACE} -p tcp --dport {TO_PORT} -j DNAT --to-destination :{FROM_PORT}"
-IP_FORWARD = "iptables {} " + f"FORWARD -i {IP_INTERFACE} -p tcp --dport {FROM_PORT} -j ACCEPT"
+if IPV6:
+	TABLES = "ip6tables"
+else:
+	TABLES = "iptables"
+IP_PREROUTING = f"{TABLES}" + " {} " + f"PREROUTING -t nat -i {IP_INTERFACE} -p tcp --dport {TO_PORT} -j DNAT --to-destination :{FROM_PORT}"
+IP_FORWARD = f"{TABLES}" + " {} " + f"FORWARD -i {IP_INTERFACE} -p tcp --dport {FROM_PORT} -j ACCEPT"
 
 IP_PREROUTING += ERROR_BLOCK + OUT_BLOCK
 IP_FORWARD += ERROR_BLOCK + OUT_BLOCK

@@ -1,26 +1,35 @@
 import socket
 import ssl
 
-HOST = "0.0.0.0"
-HOST = "127.0.0.1"
+
+HOST = "::1"
 PORT = 1337
 
-#ssl.SSLContext.maximum_version = ssl.TLSVersion.TLSv1_2
+IPV6 = 1
+SSL = 0
+
+
 
 if __name__ == "__main__":
-	server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	if IPV6:
+		server = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+	else:
+		server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 	server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-	server = ssl.wrap_socket(
-		server,
-		server_side=True,
-		keyfile="server-key.pem",
-		certfile="./server-cert.pem",
-		do_handshake_on_connect=True,
-	)
+	if SSL:
+		server = ssl.wrap_socket(
+			server,
+			server_side=True,
+			keyfile="server-key.pem",
+			certfile="./server-cert.pem",
+			do_handshake_on_connect=True,
+		)
 
 	server.bind((HOST, PORT))
+	print(f'IPv6: {IPV6}, SSL: {SSL}')
+	print(f'Listening on {HOST} {PORT}')
 	server.listen(0)
 
 
