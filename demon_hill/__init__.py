@@ -33,7 +33,6 @@ MODULES = [
 	'settings',
 	'utils',
 	'tables',
-	'submitter',
 	'http',
 	'filters',
 	'tcp_proxy',
