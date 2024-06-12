@@ -47,7 +47,6 @@ FLAG_REGEX = rb'[A-Z0-9]{31}='
 
 # Masks
 REGEX_MASKS = [
-	rb'1\n[a-zA-Z0-9]{3}\n\n5\n2\n[a-zA-Z0-9]*\n3\n0\n2\n',
 ]
 
 REGEX_MASKS_2 = [
