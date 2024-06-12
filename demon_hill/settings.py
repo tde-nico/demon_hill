@@ -8,7 +8,7 @@ import ssl
 LOG_LEVEL = 'debug'
 
 # IPv6
-IPV6 = True
+IPV6 = False
 if IPV6:
 	INADDR_ANY = '::'
 	LOCALHOST = '::1'
